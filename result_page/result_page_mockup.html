@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>온연 - 결과 페이지 Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Manrope', sans-serif;
+    background: #f1f5f9;
+    margin: 0;
+    padding: 2rem 1rem;
+    color: #1A1C1E;
+  }
+  .container { max-width: 680px; margin: 0 auto; }
+  .frame {
+    background: #f8f9fc;
+    border-radius: 12px;
+    padding: 1.25rem;
+    border: 0.5px solid #D1D5DB;
+    margin-bottom: 1.25rem;
+  }
+  .step-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #5C6BC0;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .step-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 1.25rem 0;
+    color: #94A3B8;
+    font-size: 11px;
+  }
+  .step-divider::before, .step-divider::after {
+    content: '';
+    flex: 1;
+    height: 0.5px;
+    background: #D1D5DB;
+  }
+
+  .gate {
+    background: #fff;
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+    max-width: 380px;
+    margin: 0 auto;
+    border: 0.5px solid #D1D5DB;
+  }
+  .gate-title {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 28px;
+    color: #5C6BC0;
+    margin: 0 0 4px;
+    letter-spacing: -0.02em;
+  }
+  .gate-sub {
+    font-size: 12px;
+    color: #607D8B;
+    margin: 0 0 1rem;
+    font-style: italic;
+  }
+  .gate-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 0.5px solid #D1D5DB;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 8px;
+    font-family: inherit;
+  }
+  .gate-input:focus {
+    outline: none;
+    border-color: #5C6BC0;
+  }
+  .gate-btn {
+    background: #5C6BC0;
+    color: #fff;
+    padding: 10px 24px;
+    border: none;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 4px;
+  }
+  .gate-btn:hover { background: #4F5BB1; }
+
+  .result-wrap {
+    background: rgba(255,255,255,0.6);
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+  .greeting { text-align: center; margin-bottom: 1.5rem; }
+  .greeting-h {
+    font-family: 'Manrope', sans-serif;
+    font-size: 20px;
+    font-weight: 500;
+    color: #5C6BC0;
+    margin: 0 0 6px;
+  }
+  .greeting-sub {
+    font-family: 'Manrope', sans-serif;
+    font-size: 12px;
+    color: #607D8B;
+    margin: 0;
+  }
+
+  .profiles { display: grid; gap: 12px; }
+  .profile-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 12px;
+    border: 0.5px solid #D1D5DB;
+  }
+  .avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #E8EAF6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #5C6BC0;
+    font-size: 20px;
+    font-weight: 500;
+  }
+  .profile-info { display: flex; flex-direction: column; gap: 4px; }
+  .profile-name { font-size: 14px; font-weight: 500; color: #1A1C1E; }
+  .profile-meta { font-size: 12px; color: #607D8B; }
+  .profile-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .tag {
+    background: #E8EAF6;
+    color: #3F51B5;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 9999px;
+  }
+  .profile-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 0.5px solid #E2E8F0;
+  }
+  .btn-detail {
+    flex: 1;
+    background: transparent;
+    border: 0.5px solid #94A3B8;
+    color: #475569;
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-detail:hover { background: #F1F5F9; }
+  .btn-pick {
+    flex: 1;
+    background: #5C6BC0;
+    border: none;
+    color: #fff;
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-pick:hover { background: #4F5BB1; }
+
+  .footer-note {
+    text-align: center;
+    font-size: 11px;
+    color: #94A3B8;
+    margin-top: 1rem;
+    font-style: italic;
+  }
+  .lock-icon {
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #E8EAF6;
+    color: #5C6BC0;
+    line-height: 32px;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="step-label">단계 1 — 이메일 링크 클릭 후 인증 게이트</div>
+<div class="frame">
+  <div class="gate">
+    <div class="lock-icon">🔒</div>
+    <div class="gate-title">온연</div>
+    <div class="gate-sub">결과 확인을 위해 본인 인증이 필요합니다</div>
+    <input class="gate-input" placeholder="신청 시 입력한 이메일" type="email">
+    <input class="gate-input" placeholder="생년월일 (YYMMDD)" type="text">
+    <button class="gate-btn">결과 확인하기</button>
+  </div>
+</div>
+
+<div class="step-divider">인증 성공 시</div>
+
+<div class="step-label">단계 2 — 결과 페이지 (프로필 카드)</div>
+<div class="frame">
+  <div class="result-wrap">
+    <div class="greeting">
+      <div class="greeting-h">해리 님을 위한 세 분</div>
+      <div class="greeting-sub">결이 닿는 분들을 직접 큐레이팅했습니다</div>
+    </div>
+
+    <div class="profiles">
+      <div class="profile-card">
+        <div class="avatar">A</div>
+        <div class="profile-info">
+          <div class="profile-name">A · 30세 · LA</div>
+          <div class="profile-meta">제품 디자이너 · Google</div>
+          <div class="profile-tags">
+            <span class="tag">차분한</span>
+            <span class="tag">운동매니아</span>
+            <span class="tag">독서</span>
+          </div>
+        </div>
+        <div class="profile-actions">
+          <button class="btn-detail">자세히 보기</button>
+          <button class="btn-pick">호감 표시</button>
+        </div>
+      </div>
+
+      <div class="profile-card">
+        <div class="avatar">B</div>
+        <div class="profile-info">
+          <div class="profile-name">B · 28세 · LA</div>
+          <div class="profile-meta">변호사 · Latham &amp; Watkins</div>
+          <div class="profile-tags">
+            <span class="tag">유머러스</span>
+            <span class="tag">와인</span>
+            <span class="tag">여행</span>
+          </div>
+        </div>
+        <div class="profile-actions">
+          <button class="btn-detail">자세히 보기</button>
+          <button class="btn-pick">호감 표시</button>
+        </div>
+      </div>
+
+      <div class="profile-card">
+        <div class="avatar">C</div>
+        <div class="profile-info">
+          <div class="profile-name">C · 31세 · SF</div>
+          <div class="profile-meta">엔지니어 · Stripe</div>
+          <div class="profile-tags">
+            <span class="tag">스타트업</span>
+            <span class="tag">요리</span>
+            <span class="tag">하이킹</span>
+          </div>
+        </div>
+        <div class="profile-actions">
+          <button class="btn-detail">자세히 보기</button>
+          <button class="btn-pick">호감 표시</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-note">선택 후 마음을 바꾸실 수 없으니 신중히 선택해 주세요</div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
