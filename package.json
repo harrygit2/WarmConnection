@@ -9,9 +9,8 @@
     "lint": "echo 'No linter configured'"
   },
   "dependencies": {
-    "@vercel/analytics": "^1.4.1"
+    "@vercel/analytics": "^2.0.1"
   },
-  "devDependencies": {},
   "engines": {
     "node": ">=18"
   }
