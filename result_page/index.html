@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>온연 - 결과 확인</title>
+  <link rel="icon" type="image/png" href="../icons/browser_tab_icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./result.css">
+  <script src="./result.js" defer></script>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="brand-bar" aria-label="온연 결과 페이지">
+      <a class="brand-mark" href="../index.html">온연</a>
+      <span class="brand-context">Season 1 Results</span>
+    </header>
+
+    <main class="container">
+      <section id="auth-view" class="view is-active" aria-labelledby="auth-title">
+        <form id="auth-form" class="gate-card" novalidate>
+          <div class="lock-mark" aria-hidden="true">ON</div>
+          <p class="eyebrow">Result Access</p>
+          <h1 id="auth-title" class="gate-title">결과 확인</h1>
+          <p class="gate-subtitle">신청 시 입력한 이메일과 4자리 비밀번호를 입력해 주세요.</p>
+
+          <label class="field-label" for="email">이메일</label>
+          <input id="email" class="field-input" name="email" type="email" autocomplete="email" placeholder="name@example.com" required>
+
+          <label class="field-label" for="password">결과 확인 비밀번호</label>
+          <input id="password" class="field-input" name="password" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="4" pattern="[0-9]{4}" placeholder="4자리 숫자" required>
+
+          <button id="login-button" class="primary-button" type="submit">결과 확인하기</button>
+          <p id="auth-message" class="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section id="result-view" class="view" aria-labelledby="result-title" hidden>
+        <div class="result-heading">
+          <p class="eyebrow">Curated Matches</p>
+          <h1 id="result-title" class="result-title">당신을 위한 세 분</h1>
+          <p id="result-subtitle" class="result-subtitle">결이 닿는 분들을 직접 큐레이팅했습니다.</p>
+        </div>
+
+        <div id="profiles" class="profiles" aria-live="polite"></div>
+
+        <p class="footer-note">선택 후에는 변경이 제한될 수 있으니 신중히 선택해 주세요.</p>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="detail-dialog" class="detail-dialog" aria-labelledby="detail-title">
+    <div class="dialog-header">
+      <div>
+        <p id="detail-kicker" class="dialog-kicker">Profile Detail</p>
+        <h2 id="detail-title" class="dialog-title"></h2>
+      </div>
+      <button id="detail-close" class="icon-button" type="button" aria-label="닫기">×</button>
+    </div>
+    <div id="detail-body" class="dialog-body"></div>
+  </dialog>
+</body>
+</html>
