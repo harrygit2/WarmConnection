@@ -14,7 +14,8 @@ const demoResult = {
       nameLine: "A · 30세 · LA",
       meta: "제품 디자이너 · Google",
       tags: ["차분한", "운동", "독서"],
-      detail: "대화의 속도가 차분하고, 주말에는 운동과 독서로 에너지를 회복하는 타입입니다."
+      detail: "대화의 속도가 차분하고, 주말에는 운동과 독서로 에너지를 회복하는 타입입니다.",
+      photoUrl: ""
     },
     {
       id: "demo-b",
@@ -24,7 +25,8 @@ const demoResult = {
       nameLine: "B · 28세 · LA",
       meta: "변호사 · Latham & Watkins",
       tags: ["유머러스", "와인", "여행"],
-      detail: "일과 삶의 균형을 중요하게 생각하고, 좋은 음식과 여행 이야기를 좋아합니다."
+      detail: "일과 삶의 균형을 중요하게 생각하고, 좋은 음식과 여행 이야기를 좋아합니다.",
+      photoUrl: ""
     },
     {
       id: "demo-c",
@@ -34,7 +36,8 @@ const demoResult = {
       nameLine: "C · 31세 · SF",
       meta: "엔지니어 · Stripe",
       tags: ["스타트업", "요리", "하이킹"],
-      detail: "호기심이 많고 직접 만들어보는 일을 좋아합니다. 자연 속에서 보내는 시간을 아낍니다."
+      detail: "호기심이 많고 직접 만들어보는 일을 좋아합니다. 자연 속에서 보내는 시간을 아낍니다.",
+      photoUrl: ""
     }
   ]
 };
@@ -166,9 +169,12 @@ function renderProfiles() {
     const tags = Array.isArray(profile.tags) ? profile.tags : [];
     const tagMarkup = tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
     const choiceButtonText = isSelected ? "선택 완료" : "호감 표시";
+    const mediaMarkup = profile.photoUrl
+      ? `<img class="profile-photo" src="${escapeHtml(profile.photoUrl)}" alt="" loading="lazy">`
+      : `<div class="avatar" aria-hidden="true">${escapeHtml(buildInitials(profile, index))}</div>`;
 
     card.innerHTML = `
-      <div class="avatar" aria-hidden="true">${escapeHtml(buildInitials(profile, index))}</div>
+      <div class="profile-media">${mediaMarkup}</div>
       <div class="profile-main">
         <h2 class="profile-name">${escapeHtml(profile.nameLine || profile.displayName || `추천 ${index + 1}`)}</h2>
         <p class="profile-meta">${escapeHtml(profile.meta || "공개 정보 준비 중")}</p>
@@ -205,7 +211,12 @@ function openDetail(profileId) {
   if (!profile) return;
 
   detailTitle.textContent = profile.nameLine || profile.displayName || "자세히 보기";
-  detailBody.textContent = profile.detail || "자세한 공개 정보는 추후 연결될 예정입니다.";
+  const detailPhotos = [profile.photoUrl, profile.secondaryPhotoUrl].filter(Boolean);
+  const photoMarkup = detailPhotos.length
+    ? `<div class="detail-photo-grid">${detailPhotos.map((url) => `<img class="detail-photo" src="${escapeHtml(url)}" alt="" loading="lazy">`).join("")}</div>`
+    : "";
+  const detailText = profile.detail || "자세한 공개 정보는 추후 연결될 예정입니다.";
+  detailBody.innerHTML = `${photoMarkup}<p class="detail-text">${escapeHtml(detailText)}</p>`;
 
   if (typeof detailDialog.showModal === "function") {
     detailDialog.showModal();

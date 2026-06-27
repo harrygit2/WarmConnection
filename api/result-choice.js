@@ -1,9 +1,10 @@
 import {
   RESULT_CONFIG,
-  getAllowedChoiceValues,
+  getAllowedChoiceProfiles,
+  getExistingChoiceValue,
+  getLinkedRecordIds,
   getRecord,
   isResultConfigReady,
-  normalizeAirtableValue,
   updateRecord,
   verifySessionToken
 } from "./_airtable.js";
@@ -32,10 +33,11 @@ export default async function handler(req, res) {
 
     const applicant = await getRecord(RESULT_CONFIG.applicantsTable, session.recordId);
     const fields = applicant.fields || {};
-    const allowedChoices = getAllowedChoiceValues(fields);
-    const existingChoice = normalizeAirtableValue(fields[RESULT_CONFIG.choiceField]);
+    const allowedChoiceProfiles = await getAllowedChoiceProfiles(fields);
+    const selectedProfile = allowedChoiceProfiles.find((profile) => profile.choiceValue === choice);
+    const existingChoice = getExistingChoiceValue(fields);
 
-    if (!allowedChoices.includes(choice)) {
+    if (!selectedProfile) {
       return res.status(400).json({ error: "큐레이팅된 후보 중에서만 선택할 수 있습니다." });
     }
 
@@ -44,16 +46,51 @@ export default async function handler(req, res) {
     }
 
     const submittedAt = new Date().toISOString();
-
-    await updateRecord(RESULT_CONFIG.applicantsTable, session.recordId, {
-      [RESULT_CONFIG.choiceField]: choice,
+    const updateFields = {
+      [RESULT_CONFIG.choiceField]: selectedProfile.choiceLabel || selectedProfile.nameLine || choice,
       [RESULT_CONFIG.choiceSubmittedAtField]: submittedAt
-    });
+    };
+    let matchStatus = "pending";
+    let matchedWith = null;
+
+    if (selectedProfile.personRecordId) {
+      updateFields[RESULT_CONFIG.choicePersonField] = [selectedProfile.personRecordId];
+
+      const candidate = await getRecord(RESULT_CONFIG.applicantsTable, selectedProfile.personRecordId);
+      const candidateFields = candidate.fields || {};
+      const candidateChoiceIds = getLinkedRecordIds(candidateFields[RESULT_CONFIG.choicePersonField]);
+      const isMutualMatch = candidateChoiceIds.includes(session.recordId);
+
+      if (isMutualMatch) {
+        matchStatus = "matched";
+        matchedWith = selectedProfile.personRecordId;
+        updateFields[RESULT_CONFIG.matchStatusField] = "matched";
+        updateFields[RESULT_CONFIG.matchedWithField] = [selectedProfile.personRecordId];
+        updateFields[RESULT_CONFIG.matchedAtField] = submittedAt;
+      } else {
+        updateFields[RESULT_CONFIG.matchStatusField] = "pending";
+      }
+    }
+
+    await updateRecord(RESULT_CONFIG.applicantsTable, session.recordId, updateFields);
+
+    if (matchStatus === "matched" && matchedWith) {
+      const candidate = await getRecord(RESULT_CONFIG.applicantsTable, matchedWith);
+      const candidateFields = candidate.fields || {};
+
+      await updateRecord(RESULT_CONFIG.applicantsTable, matchedWith, {
+        [RESULT_CONFIG.matchStatusField]: "matched",
+        [RESULT_CONFIG.matchedWithField]: [session.recordId],
+        [RESULT_CONFIG.matchedAtField]: candidateFields[RESULT_CONFIG.matchedAtField] || submittedAt
+      });
+    }
 
     return res.status(200).json({
       ok: true,
-      choice,
-      submittedAt
+      choice: selectedProfile.choiceValue,
+      submittedAt,
+      matchStatus,
+      matchedWith
     });
   } catch (error) {
     if (error.message === "INVALID_SESSION" || error.message === "EXPIRED_SESSION") {

@@ -14,8 +14,34 @@ export const RESULT_CONFIG = {
     process.env.AIRTABLE_CURATED_2_FIELD || "Curated_2",
     process.env.AIRTABLE_CURATED_3_FIELD || "Curated_3"
   ],
+  curatedPersonFields: [
+    process.env.AIRTABLE_CURATED_1_PERSON_FIELD || "Curated_1_Person",
+    process.env.AIRTABLE_CURATED_2_PERSON_FIELD || "Curated_2_Person",
+    process.env.AIRTABLE_CURATED_3_PERSON_FIELD || "Curated_3_Person"
+  ],
+  curatedMetaFields: [
+    process.env.AIRTABLE_CURATED_1_META_FIELD || "Curated_1_Meta",
+    process.env.AIRTABLE_CURATED_2_META_FIELD || "Curated_2_Meta",
+    process.env.AIRTABLE_CURATED_3_META_FIELD || "Curated_3_Meta"
+  ],
+  curatedTagsFields: [
+    process.env.AIRTABLE_CURATED_1_TAGS_FIELD || "Curated_1_Tags",
+    process.env.AIRTABLE_CURATED_2_TAGS_FIELD || "Curated_2_Tags",
+    process.env.AIRTABLE_CURATED_3_TAGS_FIELD || "Curated_3_Tags"
+  ],
+  curatedDetailFields: [
+    process.env.AIRTABLE_CURATED_1_DETAIL_FIELD || "Curated_1_Detail",
+    process.env.AIRTABLE_CURATED_2_DETAIL_FIELD || "Curated_2_Detail",
+    process.env.AIRTABLE_CURATED_3_DETAIL_FIELD || "Curated_3_Detail"
+  ],
   choiceField: process.env.AIRTABLE_CHOICE_FIELD || "Choice",
+  choicePersonField: process.env.AIRTABLE_CHOICE_PERSON_FIELD || "ChoicePerson",
   choiceSubmittedAtField: process.env.AIRTABLE_CHOICE_SUBMITTED_AT_FIELD || "ChoiceSubmittedAt",
+  matchStatusField: process.env.AIRTABLE_MATCH_STATUS_FIELD || "MatchStatus",
+  matchedWithField: process.env.AIRTABLE_MATCHED_WITH_FIELD || "MatchedWith",
+  matchedAtField: process.env.AIRTABLE_MATCHED_AT_FIELD || "MatchedAt",
+  photo1Field: process.env.AIRTABLE_PHOTO_1_FIELD || "Photo 1 (정면)",
+  photo2Field: process.env.AIRTABLE_PHOTO_2_FIELD || "Photo 2 (전신 or 상반신)",
   sessionSecret: process.env.RESULT_SESSION_SECRET || process.env.AIRTABLE_TOKEN,
   sessionTtlMs: 1000 * 60 * 60 * 2
 };
@@ -43,9 +69,27 @@ export function configSummary() {
       "AIRTABLE_CURATED_1_FIELD",
       "AIRTABLE_CURATED_2_FIELD",
       "AIRTABLE_CURATED_3_FIELD",
+      "AIRTABLE_CURATED_1_PERSON_FIELD",
+      "AIRTABLE_CURATED_2_PERSON_FIELD",
+      "AIRTABLE_CURATED_3_PERSON_FIELD",
+      "AIRTABLE_CURATED_1_META_FIELD",
+      "AIRTABLE_CURATED_2_META_FIELD",
+      "AIRTABLE_CURATED_3_META_FIELD",
+      "AIRTABLE_CURATED_1_TAGS_FIELD",
+      "AIRTABLE_CURATED_2_TAGS_FIELD",
+      "AIRTABLE_CURATED_3_TAGS_FIELD",
+      "AIRTABLE_CURATED_1_DETAIL_FIELD",
+      "AIRTABLE_CURATED_2_DETAIL_FIELD",
+      "AIRTABLE_CURATED_3_DETAIL_FIELD",
       "AIRTABLE_CHOICE_FIELD",
+      "AIRTABLE_CHOICE_PERSON_FIELD",
       "AIRTABLE_CHOICE_SUBMITTED_AT_FIELD",
       "AIRTABLE_APPLICANT_NAME_FIELD",
+      "AIRTABLE_MATCH_STATUS_FIELD",
+      "AIRTABLE_MATCHED_WITH_FIELD",
+      "AIRTABLE_MATCHED_AT_FIELD",
+      "AIRTABLE_PHOTO_1_FIELD",
+      "AIRTABLE_PHOTO_2_FIELD",
       "RESULT_SESSION_SECRET"
     ]
   };
@@ -90,7 +134,8 @@ export async function updateRecord(tableName, recordId, fields) {
   return airtableRequest(`${tableName}/${recordId}`, {
     method: "PATCH",
     body: {
-      fields
+      fields,
+      typecast: true
     }
   });
 }
@@ -138,33 +183,58 @@ export function verifySessionToken(token) {
   return payload;
 }
 
-export function buildProfilesFromFields(fields) {
-  return RESULT_CONFIG.curatedFields
-    .map((fieldName, index) => {
+export async function buildProfilesFromFields(fields) {
+  const profiles = await Promise.all(
+    RESULT_CONFIG.curatedFields.map(async (fieldName, index) => {
       const rawValue = fields[fieldName];
       const label = normalizeAirtableValue(rawValue);
+      const personRecordId = firstLinkedRecordId(fields[RESULT_CONFIG.curatedPersonFields[index]]);
 
-      if (!label) {
+      if (!label && !personRecordId) {
         return null;
       }
 
+      const candidateFields = personRecordId
+        ? await getLinkedApplicantFields(personRecordId)
+        : {};
+      const displayLabel = label || `추천 ${index + 1}`;
+      const photoUrl = getAttachmentUrl(candidateFields[RESULT_CONFIG.photo1Field]);
+      const secondaryPhotoUrl = getAttachmentUrl(candidateFields[RESULT_CONFIG.photo2Field]);
+
       return {
-        id: `${fieldName}:${label}`,
-        choiceValue: label,
+        id: personRecordId || `${fieldName}:${displayLabel}`,
+        choiceValue: personRecordId || displayLabel,
+        choiceLabel: displayLabel,
+        personRecordId,
         slot: index + 1,
         initials: String.fromCharCode(65 + index),
-        displayName: label,
-        nameLine: label,
-        meta: "공개 정보 준비 중",
-        tags: [],
-        detail: ""
+        displayName: displayLabel,
+        nameLine: displayLabel,
+        meta: normalizeAirtableValue(fields[RESULT_CONFIG.curatedMetaFields[index]]) || "공개 정보 준비 중",
+        tags: parseTags(fields[RESULT_CONFIG.curatedTagsFields[index]]),
+        detail: normalizeAirtableValue(fields[RESULT_CONFIG.curatedDetailFields[index]]),
+        photoUrl,
+        secondaryPhotoUrl
       };
     })
-    .filter(Boolean);
+  );
+
+  return profiles.filter(Boolean);
 }
 
-export function getAllowedChoiceValues(fields) {
-  return buildProfilesFromFields(fields).map((profile) => profile.choiceValue);
+export async function getAllowedChoiceProfiles(fields) {
+  return buildProfilesFromFields(fields);
+}
+
+export function getExistingChoiceValue(fields) {
+  return firstLinkedRecordId(fields[RESULT_CONFIG.choicePersonField]) ||
+    normalizeAirtableValue(fields[RESULT_CONFIG.choiceField]) ||
+    null;
+}
+
+export function getLinkedRecordIds(value) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((recordId) => typeof recordId === "string" && recordId.startsWith("rec"));
 }
 
 function isTodo(value) {
@@ -216,6 +286,37 @@ export function normalizeAirtableValue(value) {
   if (value === undefined || value === null) return "";
   if (Array.isArray(value)) return value.filter(Boolean).join(", ");
   return String(value).trim();
+}
+
+function firstLinkedRecordId(value) {
+  return getLinkedRecordIds(value)[0] || "";
+}
+
+async function getLinkedApplicantFields(recordId) {
+  try {
+    const record = await getRecord(RESULT_CONFIG.applicantsTable, recordId);
+    return record.fields || {};
+  } catch (error) {
+    console.error("linked applicant lookup failed:", error);
+    return {};
+  }
+}
+
+function parseTags(value) {
+  return normalizeAirtableValue(value)
+    .split(/[,，、]/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function getAttachmentUrl(value) {
+  if (!Array.isArray(value) || !value.length) return "";
+
+  const attachment = value[0];
+  return attachment?.thumbnails?.large?.url ||
+    attachment?.thumbnails?.full?.url ||
+    attachment?.url ||
+    "";
 }
 
 function base64UrlEncode(value) {

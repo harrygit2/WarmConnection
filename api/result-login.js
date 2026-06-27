@@ -5,10 +5,10 @@ import {
   createSessionToken,
   fieldRef,
   formulaString,
+  getExistingChoiceValue,
   isResultConfigReady,
   listRecords,
   normalizeEmail,
-  normalizeAirtableValue,
   normalizePassword
 } from "./_airtable.js";
 
@@ -67,8 +67,8 @@ export default async function handler(req, res) {
       applicant: {
         name: fields[RESULT_CONFIG.applicantNameField] || "신청자"
       },
-      profiles: buildProfilesFromFields(fields),
-      existingChoice: normalizeAirtableValue(fields[RESULT_CONFIG.choiceField]) || null
+      profiles: await buildProfilesFromFields(fields),
+      existingChoice: getExistingChoiceValue(fields)
     });
   } catch (error) {
     console.error("result-login error:", error);
