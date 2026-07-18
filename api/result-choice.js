@@ -5,7 +5,9 @@ import {
   getLinkedRecordIds,
   getRecord,
   isResultConfigReady,
+  listAllRecords,
   updateRecord,
+  updateRecords,
   verifySessionToken
 } from "./_airtable.js";
 
@@ -46,44 +48,50 @@ export default async function handler(req, res) {
     }
 
     const submittedAt = new Date().toISOString();
-    const updateFields = {
-      [RESULT_CONFIG.choiceField]: selectedProfile.choiceLabel || selectedProfile.nameLine || choice,
-      [RESULT_CONFIG.choiceSubmittedAtField]: submittedAt
-    };
-    let matchStatus = "pending";
-    let matchedWith = null;
+    const selectedRecordId = selectedProfile.personRecordId;
 
-    if (selectedProfile.personRecordId) {
-      updateFields[RESULT_CONFIG.choicePersonField] = [selectedProfile.personRecordId];
+    await updateRecord(RESULT_CONFIG.applicantsTable, session.recordId, {
+      [RESULT_CONFIG.choiceField]: [selectedRecordId],
+      [RESULT_CONFIG.choiceSubmittedAtField]: submittedAt,
+      [RESULT_CONFIG.matchStatusField]: "pending",
+      [RESULT_CONFIG.matchedWithField]: [],
+      [RESULT_CONFIG.matchedAtField]: null
+    });
 
-      const candidate = await getRecord(RESULT_CONFIG.applicantsTable, selectedProfile.personRecordId);
-      const candidateFields = candidate.fields || {};
-      const candidateChoiceIds = getLinkedRecordIds(candidateFields[RESULT_CONFIG.choicePersonField]);
-      const isMutualMatch = candidateChoiceIds.includes(session.recordId);
+    const candidate = await getRecord(RESULT_CONFIG.applicantsTable, selectedRecordId);
+    const candidateFields = candidate.fields || {};
+    const candidateChoiceIds = getLinkedRecordIds(candidateFields[RESULT_CONFIG.choiceField]);
+    const candidateHasSubmitted = Boolean(
+      candidateFields[RESULT_CONFIG.choiceSubmittedAtField] || candidateChoiceIds.length
+    );
+    const isMutualMatch = candidateChoiceIds.includes(session.recordId);
+    const matchStatus = isMutualMatch
+      ? "matched"
+      : candidateHasSubmitted
+        ? "Failed"
+        : "pending";
+    const matchedWith = isMutualMatch ? selectedRecordId : null;
 
-      if (isMutualMatch) {
-        matchStatus = "matched";
-        matchedWith = selectedProfile.personRecordId;
-        updateFields[RESULT_CONFIG.matchStatusField] = "matched";
-        updateFields[RESULT_CONFIG.matchedWithField] = [selectedProfile.personRecordId];
-        updateFields[RESULT_CONFIG.matchedAtField] = submittedAt;
-      } else {
-        updateFields[RESULT_CONFIG.matchStatusField] = "pending";
-      }
+    if (isMutualMatch) {
+      const matchedAt = candidateFields[RESULT_CONFIG.matchedAtField] || submittedAt;
+
+      await Promise.all([
+        updateRecord(RESULT_CONFIG.applicantsTable, session.recordId, {
+          [RESULT_CONFIG.matchStatusField]: "matched",
+          [RESULT_CONFIG.matchedWithField]: [selectedRecordId],
+          [RESULT_CONFIG.matchedAtField]: matchedAt
+        }),
+        updateRecord(RESULT_CONFIG.applicantsTable, selectedRecordId, {
+          [RESULT_CONFIG.matchStatusField]: "matched",
+          [RESULT_CONFIG.matchedWithField]: [session.recordId],
+          [RESULT_CONFIG.matchedAtField]: matchedAt
+        })
+      ]);
+    } else if (matchStatus === "Failed") {
+      await updateRecord(RESULT_CONFIG.applicantsTable, session.recordId, failedMatchFields());
     }
 
-    await updateRecord(RESULT_CONFIG.applicantsTable, session.recordId, updateFields);
-
-    if (matchStatus === "matched" && matchedWith) {
-      const candidate = await getRecord(RESULT_CONFIG.applicantsTable, matchedWith);
-      const candidateFields = candidate.fields || {};
-
-      await updateRecord(RESULT_CONFIG.applicantsTable, matchedWith, {
-        [RESULT_CONFIG.matchStatusField]: "matched",
-        [RESULT_CONFIG.matchedWithField]: [session.recordId],
-        [RESULT_CONFIG.matchedAtField]: candidateFields[RESULT_CONFIG.matchedAtField] || submittedAt
-      });
-    }
+    await markNonMutualIncomingChoicesFailed(session.recordId, selectedRecordId);
 
     return res.status(200).json({
       ok: true,
@@ -100,6 +108,38 @@ export default async function handler(req, res) {
     console.error("result-choice error:", error);
     return res.status(500).json({ error: "선택 정보를 저장하지 못했습니다." });
   }
+}
+
+async function markNonMutualIncomingChoicesFailed(applicantRecordId, selectedRecordId) {
+  const applicants = await listAllRecords(RESULT_CONFIG.applicantsTable, {
+    fields: [
+      RESULT_CONFIG.choiceField,
+      RESULT_CONFIG.choiceSubmittedAtField,
+      RESULT_CONFIG.matchStatusField,
+      RESULT_CONFIG.matchedWithField,
+      RESULT_CONFIG.matchedAtField
+    ]
+  });
+  const updates = applicants
+    .filter((record) => {
+      if (record.id === selectedRecordId) return false;
+      const choiceIds = getLinkedRecordIds(record.fields?.[RESULT_CONFIG.choiceField]);
+      return choiceIds.includes(applicantRecordId);
+    })
+    .map((record) => ({
+      recordId: record.id,
+      fields: failedMatchFields()
+    }));
+
+  await updateRecords(RESULT_CONFIG.applicantsTable, updates);
+}
+
+function failedMatchFields() {
+  return {
+    [RESULT_CONFIG.matchStatusField]: "Failed",
+    [RESULT_CONFIG.matchedWithField]: [],
+    [RESULT_CONFIG.matchedAtField]: null
+  };
 }
 
 function parseBody(req) {

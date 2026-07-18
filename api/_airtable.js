@@ -9,20 +9,15 @@ export const RESULT_CONFIG = {
   emailField: process.env.AIRTABLE_EMAIL_FIELD || "Email",
   passwordField: process.env.AIRTABLE_PASSWORD_FIELD || "비밀번호",
   applicantNameField: process.env.AIRTABLE_APPLICANT_NAME_FIELD || "Name",
-  curatedFields: [
+  curatedPersonFields: [
     process.env.AIRTABLE_CURATED_1_FIELD || "Curated_1",
     process.env.AIRTABLE_CURATED_2_FIELD || "Curated_2",
     process.env.AIRTABLE_CURATED_3_FIELD || "Curated_3"
   ],
-  curatedPersonFields: [
-    process.env.AIRTABLE_CURATED_1_PERSON_FIELD || "Curated_1_Person",
-    process.env.AIRTABLE_CURATED_2_PERSON_FIELD || "Curated_2_Person",
-    process.env.AIRTABLE_CURATED_3_PERSON_FIELD || "Curated_3_Person"
-  ],
-  curatedMetaFields: [
-    process.env.AIRTABLE_CURATED_1_META_FIELD || "Curated_1_Meta",
-    process.env.AIRTABLE_CURATED_2_META_FIELD || "Curated_2_Meta",
-    process.env.AIRTABLE_CURATED_3_META_FIELD || "Curated_3_Meta"
+  curatedOverviewFields: [
+    process.env.AIRTABLE_CURATED_1_OVERVIEW_FIELD || "Curated_1_Overview",
+    process.env.AIRTABLE_CURATED_2_OVERVIEW_FIELD || "Curated_2_Overview",
+    process.env.AIRTABLE_CURATED_3_OVERVIEW_FIELD || "Curated_3_Overview"
   ],
   curatedTagsFields: [
     process.env.AIRTABLE_CURATED_1_TAGS_FIELD || "Curated_1_Tags",
@@ -35,7 +30,6 @@ export const RESULT_CONFIG = {
     process.env.AIRTABLE_CURATED_3_DETAIL_FIELD || "Curated_3_Detail"
   ],
   choiceField: process.env.AIRTABLE_CHOICE_FIELD || "Choice",
-  choicePersonField: process.env.AIRTABLE_CHOICE_PERSON_FIELD || "ChoicePerson",
   choiceSubmittedAtField: process.env.AIRTABLE_CHOICE_SUBMITTED_AT_FIELD || "ChoiceSubmittedAt",
   matchStatusField: process.env.AIRTABLE_MATCH_STATUS_FIELD || "MatchStatus",
   matchedWithField: process.env.AIRTABLE_MATCHED_WITH_FIELD || "MatchedWith",
@@ -69,12 +63,9 @@ export function configSummary() {
       "AIRTABLE_CURATED_1_FIELD",
       "AIRTABLE_CURATED_2_FIELD",
       "AIRTABLE_CURATED_3_FIELD",
-      "AIRTABLE_CURATED_1_PERSON_FIELD",
-      "AIRTABLE_CURATED_2_PERSON_FIELD",
-      "AIRTABLE_CURATED_3_PERSON_FIELD",
-      "AIRTABLE_CURATED_1_META_FIELD",
-      "AIRTABLE_CURATED_2_META_FIELD",
-      "AIRTABLE_CURATED_3_META_FIELD",
+      "AIRTABLE_CURATED_1_OVERVIEW_FIELD",
+      "AIRTABLE_CURATED_2_OVERVIEW_FIELD",
+      "AIRTABLE_CURATED_3_OVERVIEW_FIELD",
       "AIRTABLE_CURATED_1_TAGS_FIELD",
       "AIRTABLE_CURATED_2_TAGS_FIELD",
       "AIRTABLE_CURATED_3_TAGS_FIELD",
@@ -82,7 +73,6 @@ export function configSummary() {
       "AIRTABLE_CURATED_2_DETAIL_FIELD",
       "AIRTABLE_CURATED_3_DETAIL_FIELD",
       "AIRTABLE_CHOICE_FIELD",
-      "AIRTABLE_CHOICE_PERSON_FIELD",
       "AIRTABLE_CHOICE_SUBMITTED_AT_FIELD",
       "AIRTABLE_APPLICANT_NAME_FIELD",
       "AIRTABLE_MATCH_STATUS_FIELD",
@@ -124,6 +114,28 @@ export async function listRecords(tableName, params = {}) {
   });
 }
 
+export async function listAllRecords(tableName, params = {}) {
+  const records = [];
+  let offset = "";
+
+  do {
+    const page = await airtableRequest(tableName, {
+      method: "GET",
+      params: {
+        ...params,
+        pageSize: "100",
+        offset
+      },
+      includeOffset: true
+    });
+
+    records.push(...page.records);
+    offset = page.offset || "";
+  } while (offset);
+
+  return records;
+}
+
 export async function getRecord(tableName, recordId) {
   return airtableRequest(`${tableName}/${recordId}`, {
     method: "GET"
@@ -138,6 +150,28 @@ export async function updateRecord(tableName, recordId, fields) {
       typecast: true
     }
   });
+}
+
+export async function updateRecords(tableName, updates) {
+  const updatedRecords = [];
+
+  for (let index = 0; index < updates.length; index += 10) {
+    const batch = updates.slice(index, index + 10);
+    const records = await airtableRequest(tableName, {
+      method: "PATCH",
+      body: {
+        records: batch.map(({ recordId, fields }) => ({
+          id: recordId,
+          fields
+        })),
+        typecast: true
+      }
+    });
+
+    updatedRecords.push(...records);
+  }
+
+  return updatedRecords;
 }
 
 export function createSessionToken(payload) {
@@ -185,32 +219,28 @@ export function verifySessionToken(token) {
 
 export async function buildProfilesFromFields(fields) {
   const profiles = await Promise.all(
-    RESULT_CONFIG.curatedFields.map(async (fieldName, index) => {
-      const rawValue = fields[fieldName];
-      const label = normalizeAirtableValue(rawValue);
-      const personRecordId = firstLinkedRecordId(fields[RESULT_CONFIG.curatedPersonFields[index]]);
+    RESULT_CONFIG.curatedPersonFields.map(async (fieldName, index) => {
+      const personRecordId = firstLinkedRecordId(fields[fieldName]);
 
-      if (!label && !personRecordId) {
+      if (!personRecordId) {
         return null;
       }
 
-      const candidateFields = personRecordId
-        ? await getLinkedApplicantFields(personRecordId)
-        : {};
-      const displayLabel = label || `추천 ${index + 1}`;
+      const candidateFields = await getLinkedApplicantFields(personRecordId);
+      const displayName = normalizeAirtableValue(candidateFields[RESULT_CONFIG.applicantNameField]) ||
+        `추천 ${index + 1}`;
       const photoUrl = getAttachmentUrl(candidateFields[RESULT_CONFIG.photo1Field]);
       const secondaryPhotoUrl = getAttachmentUrl(candidateFields[RESULT_CONFIG.photo2Field]);
 
       return {
-        id: personRecordId || `${fieldName}:${displayLabel}`,
-        choiceValue: personRecordId || displayLabel,
-        choiceLabel: displayLabel,
+        id: personRecordId,
+        choiceValue: personRecordId,
         personRecordId,
         slot: index + 1,
         initials: String.fromCharCode(65 + index),
-        displayName: displayLabel,
-        nameLine: displayLabel,
-        meta: normalizeAirtableValue(fields[RESULT_CONFIG.curatedMetaFields[index]]) || "공개 정보 준비 중",
+        displayName,
+        nameLine: displayName,
+        overview: normalizeAirtableValue(fields[RESULT_CONFIG.curatedOverviewFields[index]]) || "공개 정보 준비 중",
         tags: parseTags(fields[RESULT_CONFIG.curatedTagsFields[index]]),
         detail: normalizeAirtableValue(fields[RESULT_CONFIG.curatedDetailFields[index]]),
         photoUrl,
@@ -227,9 +257,7 @@ export async function getAllowedChoiceProfiles(fields) {
 }
 
 export function getExistingChoiceValue(fields) {
-  return firstLinkedRecordId(fields[RESULT_CONFIG.choicePersonField]) ||
-    normalizeAirtableValue(fields[RESULT_CONFIG.choiceField]) ||
-    null;
+  return firstLinkedRecordId(fields[RESULT_CONFIG.choiceField]) || null;
 }
 
 export function getLinkedRecordIds(value) {
@@ -251,7 +279,9 @@ async function airtableRequest(tablePath, options = {}) {
   );
 
   Object.entries(options.params || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
+    if (Array.isArray(value)) {
+      value.forEach((item) => url.searchParams.append(`${key}[]`, item));
+    } else if (value !== undefined && value !== null && value !== "") {
       url.searchParams.set(key, value);
     }
   });
@@ -270,6 +300,13 @@ async function airtableRequest(tablePath, options = {}) {
   if (!response.ok) {
     const message = data.error?.message || data.error || "Airtable request failed";
     throw new Error(message);
+  }
+
+  if (options.includeOffset) {
+    return {
+      records: data.records || [],
+      offset: data.offset || ""
+    };
   }
 
   return data.records || data;
