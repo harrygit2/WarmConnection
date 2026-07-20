@@ -15,7 +15,8 @@ const demoResult = {
       overview: "제품 디자이너 · Google",
       tags: ["차분한", "운동", "독서"],
       detail: "대화의 속도가 차분하고, 주말에는 운동과 독서로 에너지를 회복하는 타입입니다.",
-      photoUrl: ""
+      photoUrl: "",
+      photoUrls: []
     },
     {
       id: "demo-b",
@@ -26,7 +27,8 @@ const demoResult = {
       overview: "변호사 · Latham & Watkins",
       tags: ["유머러스", "와인", "여행"],
       detail: "일과 삶의 균형을 중요하게 생각하고, 좋은 음식과 여행 이야기를 좋아합니다.",
-      photoUrl: ""
+      photoUrl: "",
+      photoUrls: []
     },
     {
       id: "demo-c",
@@ -37,7 +39,8 @@ const demoResult = {
       overview: "엔지니어 · Stripe",
       tags: ["스타트업", "요리", "하이킹"],
       detail: "호기심이 많고 직접 만들어보는 일을 좋아합니다. 자연 속에서 보내는 시간을 아낍니다.",
-      photoUrl: ""
+      photoUrl: "",
+      photoUrls: []
     }
   ]
 };
@@ -211,7 +214,9 @@ function openDetail(profileId) {
   if (!profile) return;
 
   detailTitle.textContent = profile.nameLine || profile.displayName || "자세히 보기";
-  const detailPhotos = [profile.photoUrl, profile.secondaryPhotoUrl].filter(Boolean);
+  const detailPhotos = Array.isArray(profile.photoUrls)
+    ? profile.photoUrls.filter(Boolean)
+    : [profile.photoUrl, profile.secondaryPhotoUrl].filter(Boolean);
   const photoMarkup = detailPhotos.length
     ? `<div class="detail-photo-grid">${detailPhotos.map((url) => `<img class="detail-photo" src="${escapeHtml(url)}" alt="" loading="lazy">`).join("")}</div>`
     : "";

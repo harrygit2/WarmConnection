@@ -19,23 +19,22 @@ export const RESULT_CONFIG = {
     process.env.AIRTABLE_CURATED_2_OVERVIEW_FIELD || "Curated_2_Overview",
     process.env.AIRTABLE_CURATED_3_OVERVIEW_FIELD || "Curated_3_Overview"
   ],
-  curatedTagsFields: [
-    process.env.AIRTABLE_CURATED_1_TAGS_FIELD || "Curated_1_Tags",
-    process.env.AIRTABLE_CURATED_2_TAGS_FIELD || "Curated_2_Tags",
-    process.env.AIRTABLE_CURATED_3_TAGS_FIELD || "Curated_3_Tags"
-  ],
-  curatedDetailFields: [
-    process.env.AIRTABLE_CURATED_1_DETAIL_FIELD || "Curated_1_Detail",
-    process.env.AIRTABLE_CURATED_2_DETAIL_FIELD || "Curated_2_Detail",
-    process.env.AIRTABLE_CURATED_3_DETAIL_FIELD || "Curated_3_Detail"
-  ],
   choiceField: process.env.AIRTABLE_CHOICE_FIELD || "Choice",
   choiceSubmittedAtField: process.env.AIRTABLE_CHOICE_SUBMITTED_AT_FIELD || "ChoiceSubmittedAt",
   matchStatusField: process.env.AIRTABLE_MATCH_STATUS_FIELD || "MatchStatus",
   matchedWithField: process.env.AIRTABLE_MATCHED_WITH_FIELD || "MatchedWith",
   matchedAtField: process.env.AIRTABLE_MATCHED_AT_FIELD || "MatchedAt",
-  photo1Field: process.env.AIRTABLE_PHOTO_1_FIELD || "Photo 1 (정면)",
-  photo2Field: process.env.AIRTABLE_PHOTO_2_FIELD || "Photo 2 (전신 or 상반신)",
+  photoFields: [
+    process.env.AIRTABLE_PHOTO_1_FIELD || "Photo 1 (정면)",
+    process.env.AIRTABLE_PHOTO_2_FIELD || "Photo 2 (전신 or 상반신)",
+    process.env.AIRTABLE_PHOTO_3_FIELD || "Photo 3 (취미)",
+    process.env.AIRTABLE_PHOTO_4_FIELD || "Photo 4 (추가)"
+  ],
+  ageField: process.env.AIRTABLE_AGE_FIELD || "Age",
+  locationField: process.env.AIRTABLE_LOCATION_FIELD || "Location",
+  industryField: process.env.AIRTABLE_INDUSTRY_FIELD || "Industry",
+  mbtiField: process.env.AIRTABLE_MBTI_FIELD || "MBTI",
+  introduceField: process.env.AIRTABLE_INTRODUCE_FIELD || "Introduce",
   sessionSecret: process.env.RESULT_SESSION_SECRET || process.env.AIRTABLE_TOKEN,
   sessionTtlMs: 1000 * 60 * 60 * 2
 };
@@ -66,12 +65,6 @@ export function configSummary() {
       "AIRTABLE_CURATED_1_OVERVIEW_FIELD",
       "AIRTABLE_CURATED_2_OVERVIEW_FIELD",
       "AIRTABLE_CURATED_3_OVERVIEW_FIELD",
-      "AIRTABLE_CURATED_1_TAGS_FIELD",
-      "AIRTABLE_CURATED_2_TAGS_FIELD",
-      "AIRTABLE_CURATED_3_TAGS_FIELD",
-      "AIRTABLE_CURATED_1_DETAIL_FIELD",
-      "AIRTABLE_CURATED_2_DETAIL_FIELD",
-      "AIRTABLE_CURATED_3_DETAIL_FIELD",
       "AIRTABLE_CHOICE_FIELD",
       "AIRTABLE_CHOICE_SUBMITTED_AT_FIELD",
       "AIRTABLE_APPLICANT_NAME_FIELD",
@@ -80,6 +73,13 @@ export function configSummary() {
       "AIRTABLE_MATCHED_AT_FIELD",
       "AIRTABLE_PHOTO_1_FIELD",
       "AIRTABLE_PHOTO_2_FIELD",
+      "AIRTABLE_PHOTO_3_FIELD",
+      "AIRTABLE_PHOTO_4_FIELD",
+      "AIRTABLE_AGE_FIELD",
+      "AIRTABLE_LOCATION_FIELD",
+      "AIRTABLE_INDUSTRY_FIELD",
+      "AIRTABLE_MBTI_FIELD",
+      "AIRTABLE_INTRODUCE_FIELD",
       "RESULT_SESSION_SECRET"
     ]
   };
@@ -229,8 +229,9 @@ export async function buildProfilesFromFields(fields) {
       const candidateFields = await getLinkedApplicantFields(personRecordId);
       const displayName = normalizeAirtableValue(candidateFields[RESULT_CONFIG.applicantNameField]) ||
         `추천 ${index + 1}`;
-      const photoUrl = getAttachmentUrl(candidateFields[RESULT_CONFIG.photo1Field]);
-      const secondaryPhotoUrl = getAttachmentUrl(candidateFields[RESULT_CONFIG.photo2Field]);
+      const photoUrls = RESULT_CONFIG.photoFields
+        .map((photoField) => getAttachmentUrl(candidateFields[photoField]))
+        .filter(Boolean);
 
       return {
         id: personRecordId,
@@ -241,10 +242,10 @@ export async function buildProfilesFromFields(fields) {
         displayName,
         nameLine: displayName,
         overview: normalizeAirtableValue(fields[RESULT_CONFIG.curatedOverviewFields[index]]) || "공개 정보 준비 중",
-        tags: parseTags(fields[RESULT_CONFIG.curatedTagsFields[index]]),
-        detail: normalizeAirtableValue(fields[RESULT_CONFIG.curatedDetailFields[index]]),
-        photoUrl,
-        secondaryPhotoUrl
+        tags: buildCandidateTags(candidateFields),
+        detail: normalizeAirtableValue(candidateFields[RESULT_CONFIG.introduceField]),
+        photoUrl: photoUrls[0] || "",
+        photoUrls
       };
     })
   );
@@ -321,7 +322,12 @@ function encodePath(tablePath) {
 
 export function normalizeAirtableValue(value) {
   if (value === undefined || value === null) return "";
-  if (Array.isArray(value)) return value.filter(Boolean).join(", ");
+  if (Array.isArray(value)) {
+    return value.map(normalizeAirtableValue).filter(Boolean).join(", ");
+  }
+  if (typeof value === "object") {
+    return normalizeAirtableValue(value.name ?? value.value ?? "");
+  }
   return String(value).trim();
 }
 
@@ -339,11 +345,18 @@ async function getLinkedApplicantFields(recordId) {
   }
 }
 
-function parseTags(value) {
-  return normalizeAirtableValue(value)
-    .split(/[,，、]/)
-    .map((tag) => tag.trim())
-    .filter(Boolean);
+function buildCandidateTags(fields) {
+  const age = normalizeAirtableValue(fields[RESULT_CONFIG.ageField]);
+  const formattedAge = /^\d+(?:\.0+)?$/.test(age)
+    ? `${Number.parseInt(age, 10)}세`
+    : age;
+
+  return [...new Set([
+    formattedAge,
+    normalizeAirtableValue(fields[RESULT_CONFIG.locationField]),
+    normalizeAirtableValue(fields[RESULT_CONFIG.industryField]),
+    normalizeAirtableValue(fields[RESULT_CONFIG.mbtiField])
+  ].filter(Boolean))];
 }
 
 function getAttachmentUrl(value) {
