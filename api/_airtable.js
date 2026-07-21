@@ -14,11 +14,6 @@ export const RESULT_CONFIG = {
     process.env.AIRTABLE_CURATED_2_FIELD || "Curated_2",
     process.env.AIRTABLE_CURATED_3_FIELD || "Curated_3"
   ],
-  curatedOverviewFields: [
-    process.env.AIRTABLE_CURATED_1_OVERVIEW_FIELD || "Curated_1_Overview",
-    process.env.AIRTABLE_CURATED_2_OVERVIEW_FIELD || "Curated_2_Overview",
-    process.env.AIRTABLE_CURATED_3_OVERVIEW_FIELD || "Curated_3_Overview"
-  ],
   choiceField: process.env.AIRTABLE_CHOICE_FIELD || "Choice",
   choiceSubmittedAtField: process.env.AIRTABLE_CHOICE_SUBMITTED_AT_FIELD || "ChoiceSubmittedAt",
   matchStatusField: process.env.AIRTABLE_MATCH_STATUS_FIELD || "MatchStatus",
@@ -35,6 +30,7 @@ export const RESULT_CONFIG = {
   industryField: process.env.AIRTABLE_INDUSTRY_FIELD || "Industry",
   mbtiField: process.env.AIRTABLE_MBTI_FIELD || "MBTI",
   introduceField: process.env.AIRTABLE_INTRODUCE_FIELD || "Introduce",
+  hashtagsField: process.env.AIRTABLE_HASHTAGS_FIELD || "Hashtags",
   sessionSecret: process.env.RESULT_SESSION_SECRET || process.env.AIRTABLE_TOKEN,
   sessionTtlMs: 1000 * 60 * 60 * 2
 };
@@ -62,9 +58,6 @@ export function configSummary() {
       "AIRTABLE_CURATED_1_FIELD",
       "AIRTABLE_CURATED_2_FIELD",
       "AIRTABLE_CURATED_3_FIELD",
-      "AIRTABLE_CURATED_1_OVERVIEW_FIELD",
-      "AIRTABLE_CURATED_2_OVERVIEW_FIELD",
-      "AIRTABLE_CURATED_3_OVERVIEW_FIELD",
       "AIRTABLE_CHOICE_FIELD",
       "AIRTABLE_CHOICE_SUBMITTED_AT_FIELD",
       "AIRTABLE_APPLICANT_NAME_FIELD",
@@ -80,6 +73,7 @@ export function configSummary() {
       "AIRTABLE_INDUSTRY_FIELD",
       "AIRTABLE_MBTI_FIELD",
       "AIRTABLE_INTRODUCE_FIELD",
+      "AIRTABLE_HASHTAGS_FIELD",
       "RESULT_SESSION_SECRET"
     ]
   };
@@ -241,7 +235,7 @@ export async function buildProfilesFromFields(fields) {
         initials: String.fromCharCode(65 + index),
         displayName,
         nameLine: displayName,
-        overview: normalizeAirtableValue(fields[RESULT_CONFIG.curatedOverviewFields[index]]) || "공개 정보 준비 중",
+        hashtags: normalizeAirtableValue(candidateFields[RESULT_CONFIG.hashtagsField]) || "키워드 준비 중",
         tags: buildCandidateTags(candidateFields),
         detail: normalizeAirtableValue(candidateFields[RESULT_CONFIG.introduceField]),
         photoUrl: photoUrls[0] || "",

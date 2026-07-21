@@ -12,7 +12,7 @@ const demoResult = {
       slot: 1,
       initials: "A",
       nameLine: "A · 30세 · LA",
-      overview: "제품 디자이너 · Google",
+      hashtags: "#차분함 #문화생활 #액티브",
       tags: ["차분한", "운동", "독서"],
       detail: "대화의 속도가 차분하고, 주말에는 운동과 독서로 에너지를 회복하는 타입입니다.",
       photoUrl: "",
@@ -24,7 +24,7 @@ const demoResult = {
       slot: 2,
       initials: "B",
       nameLine: "B · 28세 · LA",
-      overview: "변호사 · Latham & Watkins",
+      hashtags: "#유쾌함 #미식가 #여행러버",
       tags: ["유머러스", "와인", "여행"],
       detail: "일과 삶의 균형을 중요하게 생각하고, 좋은 음식과 여행 이야기를 좋아합니다.",
       photoUrl: "",
@@ -36,7 +36,7 @@ const demoResult = {
       slot: 3,
       initials: "C",
       nameLine: "C · 31세 · SF",
-      overview: "엔지니어 · Stripe",
+      hashtags: "#깊은대화 #성장지향 #배려심",
       tags: ["스타트업", "요리", "하이킹"],
       detail: "호기심이 많고 직접 만들어보는 일을 좋아합니다. 자연 속에서 보내는 시간을 아낍니다.",
       photoUrl: "",
@@ -180,7 +180,7 @@ function renderProfiles() {
       <div class="profile-media">${mediaMarkup}</div>
       <div class="profile-main">
         <h2 class="profile-name">${escapeHtml(profile.nameLine || profile.displayName || `추천 ${index + 1}`)}</h2>
-        <p class="profile-meta">${escapeHtml(profile.overview || "공개 정보 준비 중")}</p>
+        <p class="profile-meta">${escapeHtml(profile.hashtags || "키워드 준비 중")}</p>
         <div class="profile-tags">${tagMarkup}</div>
       </div>
       <div class="profile-actions">
